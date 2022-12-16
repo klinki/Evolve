@@ -1,0 +1,40 @@
+﻿name: Build Release
+
+on:
+    push:
+        branches-ignore:
+            - master
+    workflow_dispatch:
+
+concurrency:
+    group: ci-release-evolve
+    cancel-in-progress: false
+
+jobs:
+    build:
+        runs-on: [ windows-latest ]
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+
+            - name: Setup .NET Core
+              uses: actions/setup-dotnet@v3
+              with:
+                  dotnet-version: '6.0.x'
+
+            - name: Setup cake 
+              run:
+                  dotnet tool restore
+            
+            - name: Cake build
+              run:
+                dotnet cake --target pack-evolve-tool
+
+            - name: Push
+              shell: pwsh
+              run: |
+                  $files = Get-ChildItem -Path dist -File
+                  dotnet nuget push $files[0].FullName --source https://nuget.pkg.github.com/klinki/index.json --api-key "$($env:GITHUB_TOKEN)"
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
